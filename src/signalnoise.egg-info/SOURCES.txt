@@ -1,0 +1,9 @@
+README.md
+pyproject.toml
+src/signalnoise/__init__.py
+src/signalnoise/core.py
+src/signalnoise.egg-info/PKG-INFO
+src/signalnoise.egg-info/SOURCES.txt
+src/signalnoise.egg-info/dependency_links.txt
+src/signalnoise.egg-info/requires.txt
+src/signalnoise.egg-info/top_level.txt
