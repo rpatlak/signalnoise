@@ -440,3 +440,123 @@ def chi2_gaussianity_from_file(fname, f0,
         "chi2_dof": dof,
         "chi2_bins_used": bins_used
     }
+
+
+
+def estimate_aliased_tone_clean(fname_clean,
+                                block_index=5,
+                                remove_mean=True,
+                                window="blackmanharris",
+                                search_width_hz=None,
+                                expected_alias_hz=None,
+                                true_band_hz=None,
+                                max_fold=20,
+                                plot=True,
+                                fmax_khz=None):
+    """
+    Estimate the observed (aliased) tone frequency from CLEAN data only,
+    then return possible original analog frequencies that could produce that alias.
+
+    Inputs
+    ------
+    fname_clean            : .npz file with keys ["data", "fs"]
+    block_index            : which row in data[] to use
+    remove_mean            : subtract DC offset
+    window                 : "blackmanharris" or "rect"
+    expected_alias_hz      : expected aliased frequency (Hz), if known
+    search_width_hz        : half-width for peak search around expected_alias_hz (Hz)
+    true_band_hz           : (fmin, fmax) plausible TRUE analog frequency band (Hz)
+    max_fold               : number of fs-folds to consider if true_band_hz not given
+    plot                   : plot PSD + detected alias
+    fmax_khz               : x-axis limit in kHz (defaults to Nyquist)
+
+    Returns
+    -------
+    dict with:
+      fs,
+      f_alias_hz,
+      candidates_hz
+    """
+
+    # Load clean data
+    loaded = np.load(fname_clean)
+    data = loaded["data"]
+    fs = float(loaded["fs"])
+
+    x = data[block_index].astype(float)
+    if remove_mean:
+        x = x - np.mean(x)
+
+    # Window + FFT
+    N = len(x)
+    if window == "blackmanharris":
+        w = blackmanharris(N, sym=False)
+    else:
+        w = np.ones(N)
+
+    X = np.fft.fft(x * w)
+    f = np.fft.fftfreq(N, d=1/fs)
+
+    pos = f > 0
+    fpos = f[pos]
+    P = (np.abs(X)**2)[pos]
+
+    # Find aliased peak
+    if expected_alias_hz is not None and search_width_hz is not None:
+        mask = np.abs(fpos - expected_alias_hz) <= search_width_hz
+        if not np.any(mask):
+            raise ValueError("Search mask empty — widen search_width_hz.")
+        idx = np.argmax(P[mask])
+        f_alias = fpos[mask][idx]
+    else:
+        idx = np.argmax(P)
+        f_alias = fpos[idx]
+
+    f_alias = float(f_alias)
+
+    # Build candidate true freqs
+    candidates = []
+
+    if true_band_hz is not None:
+        fmin, fmax = true_band_hz
+        k_min = int(np.floor(fmin / fs))
+        k_max = int(np.ceil(fmax / fs))
+
+        for k in range(max(0, k_min-1), k_max+1):
+            c1 = k*fs + f_alias
+            c2 = (k+1)*fs - f_alias
+            for c in (c1, c2):
+                if fmin <= c <= fmax:
+                    candidates.append(float(c))
+
+        candidates = sorted(set(np.round(candidates, 12)))
+
+    else:
+        for k in range(max_fold+1):
+            candidates.append(k*fs + f_alias)
+            if k > 0:
+                candidates.append(k*fs - f_alias)
+
+        candidates = sorted(set(c for c in candidates if c >= 0))
+
+    # Plot (clean only)
+    if plot:
+        if fmax_khz is None:
+            fmax_khz = (fs/2)/1e3
+
+        plt.semilogy(fpos/1e3, P, color="royalblue", label="Clean (windowed)")
+        plt.axvline(f_alias/1e3, color="k", linestyle=":",
+                    label=f"Observed alias ≈ {f_alias/1e3:.1f} kHz")
+        plt.xlabel("Frequency (kHz)")
+        plt.ylabel("Power (arb units)")
+        plt.title("Aliased tone identification")
+        plt.xlim(0, fmax_khz)
+        plt.grid(True)
+        plt.legend()
+        plt.show()
+
+    return {
+        "fs": fs,
+        "f_alias_hz": f_alias,
+        "candidates_hz": candidates
+    }

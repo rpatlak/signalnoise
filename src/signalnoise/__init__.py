@@ -8,6 +8,7 @@ from .core import (
     plot_power_spectrum,
     plot_voltage_spectrum,
     chi2_gaussianity_from_file,
+    estimate_aliased_tone_clean,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "plot_power_spectrum",
     "plot_voltage_spectrum",
     "chi2_gaussianity_from_file",
+    "estimate_aliased_tone_clean",
 ]
