@@ -7,6 +7,7 @@ from .core import (
     plot_two_comparisons,
     plot_power_spectrum,
     plot_voltage_spectrum,
+    chi2_gaussianity_from_file,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "plot_two_comparisons",
     "plot_power_spectrum",
     "plot_voltage_spectrum",
+    " chi2_gaussianity_from_file",
 ]

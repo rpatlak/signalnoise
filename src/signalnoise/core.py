@@ -321,3 +321,122 @@ def plot_voltage_spectrum(fname,
     plt.show()
 
     return mag
+
+from scipy import stats
+
+def chi2_gaussianity_from_file(fname, f0,
+                              block_index=5,
+                              remove_mean=True,
+                              fit_window=None,
+                              bins=100,
+                              xmin=-100, xmax=100,
+                              min_expected=5,
+                              plot=True,
+                              label=None):
+    """
+    End-to-end chi-square GOF test: residuals vs Gaussian.
+    Residuals are computed as: x - best_fit_sine_at_f0
+
+    Returns dict with:
+      mu, sigma, chi2_stat, chi2_p, dof, bins_used, N_residual
+    """
+
+    # Load data 
+    loaded = np.load(fname)
+    data = loaded["data"]
+    fs = float(loaded["fs"])
+
+    x = data[block_index].astype(float)
+    if remove_mean:
+        x = x - np.mean(x)
+
+    N = len(x)
+    n = np.arange(N)
+
+    # Choose fit window 
+    if fit_window is None:
+        i0, i1 = 0, N
+    else:
+        i0, i1 = int(fit_window[0]), int(fit_window[1])
+
+    n_fit = n[i0:i1]
+    x_fitdata = x[i0:i1]
+
+    # Fit sine at f0: x ≈ a*sin(w n) + b*cos(w n) + c 
+    w = 2*np.pi*f0/fs
+    S = np.sin(w*n_fit)
+    C = np.cos(w*n_fit)
+    A_mat = np.column_stack([S, C, np.ones_like(n_fit)])
+    a, b, c = np.linalg.lstsq(A_mat, x_fitdata, rcond=None)[0]
+
+    # Model across full record, residual across full record
+    x_model = a*np.sin(w*n) + b*np.cos(w*n) + c
+    residual = x - x_model
+    residual = residual[np.isfinite(residual)]
+    Nr = len(residual)
+
+    # Fit Gaussian params from residual 
+    mu = np.mean(residual)
+    sigma = np.std(residual, ddof=1)
+
+    # Chi-square GOF on histogram 
+    counts, edges = np.histogram(residual, bins=bins, range=(xmin, xmax))
+
+    # Expected probability mass per bin under Normal(mu, sigma)
+    cdf_hi = stats.norm.cdf(edges[1:], loc=mu, scale=sigma)
+    cdf_lo = stats.norm.cdf(edges[:-1], loc=mu, scale=sigma)
+    p_bin = cdf_hi - cdf_lo
+    expected = Nr * p_bin
+
+    # Keep only bins with enough expected counts
+    good = expected >= min_expected
+    obs_good = counts[good]
+    exp_good = expected[good]
+
+    # dof = (#bins_used - 1 - #fit_params). We fit mu & sigma => 2 params
+    bins_used = int(np.sum(good))
+    dof = bins_used - 1 - 2
+
+    if dof > 0 and np.all(exp_good > 0):
+        chi2_stat = np.sum((obs_good - exp_good)**2 / exp_good)
+        chi2_p = stats.chi2.sf(chi2_stat, dof)
+    else:
+        chi2_stat, chi2_p = np.nan, np.nan
+
+    # Optional plot: histogram + Gaussian overlay
+    if plot:
+        plot_label = label if label is not None else fname
+
+        plt.hist(residual, bins=bins, range=(xmin, xmax), alpha=0.7,
+                 label=f"{plot_label} residuals", color = "royalblue", edgecolor="blue", lw=0.5)
+
+        xx = np.linspace(xmin, xmax, 2000)
+        pdf = stats.norm.pdf(xx, loc=mu, scale=sigma)
+
+        # scale pdf to expected histogram counts
+        bin_width = edges[1] - edges[0]
+        gauss_counts = pdf * Nr * bin_width
+
+        plt.plot(xx, gauss_counts, linewidth=2,
+                 label=f"Gaussian fit: μ={mu:.2f}, σ={sigma:.2f}", color = "limegreen")
+
+        plt.xlabel("Residual value (arb units)")
+        plt.ylabel("Counts")
+        plt.title(f"Residual histogram + chi-square GOF (p={chi2_p:.3g})")
+        plt.legend(fontsize=8)
+        plt.show()
+
+    return {
+        "file": fname,
+        "fs": fs,
+        "f0_hz": f0,
+        "block_index": block_index,
+        "fit_window": (i0, i1),
+        "N_residual": Nr,
+        "mu": mu,
+        "sigma": sigma,
+        "chi2_stat": chi2_stat,
+        "chi2_p": chi2_p,
+        "chi2_dof": dof,
+        "chi2_bins_used": bins_used
+    }
