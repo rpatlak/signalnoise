@@ -19,5 +19,5 @@ __all__ = [
     "plot_two_comparisons",
     "plot_power_spectrum",
     "plot_voltage_spectrum",
-    " chi2_gaussianity_from_file",
+    "chi2_gaussianity_from_file",
 ]
