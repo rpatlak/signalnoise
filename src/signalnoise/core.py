@@ -113,7 +113,7 @@ def load_and_fit_sine(fname, f0,
         plt.legend()
         plt.xlabel("Counts")
         plt.ylabel("Voltage (arbitrary units)")
-        plt.title(title if title else "Wave data compared to fitted sine wave")
+        #plt.title(title if title else "Wave data compared to fitted sine wave")
         plt.show()
 
     return {
@@ -198,6 +198,8 @@ def plot_clean_vs_noisy_psd(fname_clean, fname_noisy, f0,
     ax.set_xlabel("Frequency (kHz)")
     ax.set_ylabel("Power (arbitrary)")
     ax.grid()
+    ax.legend()
+    plt.show()
 
     if fmax_khz is None:
         fmax_khz = (fs/2)/1e3
@@ -271,8 +273,8 @@ def plot_power_spectrum(fname, block_index=5, fmax_khz=1500, remove_mean=True, u
         plt.plot(f_pos/1e3, P_pos, color = "royalblue")
 
     plt.xlabel("Frequency (kHz)")
-    plt.ylabel("Power (Arbitrary Units)")
-    plt.title(f"Power Spectrum ({fname})")
+    plt.ylabel("log10 Power (Arbitrary Units)")
+    #plt.title(f"Power Spectrum ({fname})")
     plt.xlim(0, fmax_khz)
     plt.show()
 
@@ -316,7 +318,7 @@ def plot_voltage_spectrum(fname,
         plt.ylabel("Voltage (arbitrary units)")
 
     plt.xlabel("FFT bin (counts)")
-    plt.title(f"Voltage Spectrum {title_suffix}")
+    #plt.title(f"Voltage Spectrum {title_suffix}")
     plt.grid()
     plt.show()
 
@@ -422,7 +424,7 @@ def chi2_gaussianity_from_file(fname, f0,
 
         plt.xlabel("Residual value (arb units)")
         plt.ylabel("Counts")
-        plt.title(f"Residual histogram + chi-square GOF (p={chi2_p:.3g})")
+        #plt.title(f"Residual histogram + chi-square GOF (p={chi2_p:.3g})")
         plt.legend(fontsize=8)
         plt.show()
 
@@ -505,7 +507,7 @@ def estimate_aliased_tone_clean(fname_clean,
     if expected_alias_hz is not None and search_width_hz is not None:
         mask = np.abs(fpos - expected_alias_hz) <= search_width_hz
         if not np.any(mask):
-            raise ValueError("Search mask empty — widen search_width_hz.")
+            raise ValueError("Search mask empty, widen search_width_hz.")
         idx = np.argmax(P[mask])
         f_alias = fpos[mask][idx]
     else:
@@ -514,7 +516,7 @@ def estimate_aliased_tone_clean(fname_clean,
 
     f_alias = float(f_alias)
 
-    # Build candidate true freqs
+    # Build candidate true frequencies
     candidates = []
 
     if true_band_hz is not None:
@@ -549,7 +551,7 @@ def estimate_aliased_tone_clean(fname_clean,
                     label=f"Observed alias ≈ {f_alias/1e3:.1f} kHz")
         plt.xlabel("Frequency (kHz)")
         plt.ylabel("Power (arb units)")
-        plt.title("Aliased tone identification")
+        #plt.title("Aliased tone identification")
         plt.xlim(0, fmax_khz)
         plt.grid(True)
         plt.legend()
@@ -560,3 +562,15 @@ def estimate_aliased_tone_clean(fname_clean,
         "f_alias_hz": f_alias,
         "candidates_hz": candidates
     }
+
+
+import ugradio
+fs = 3e6
+nsamples = 2048
+nblocks = 10
+sdr = ugradio.sdr.SDR(sample_rate=fs, fir_coeffs=np.array([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2047]))
+data = sdr.capture_data(nsamples, nblocks=nblocks)
+print("data shape:", data.shape)
+print("dtype:", data.dtype)
+print("fs (Hz):", fs)
+np.savez("1500khzNoise.npz", data=data, fs=fs)
