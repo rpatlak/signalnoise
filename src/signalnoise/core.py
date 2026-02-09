@@ -564,7 +564,7 @@ def estimate_aliased_tone_clean(fname_clean,
     }
 
 
-import ugradio
+#import ugradio
 fs = 3e6
 nsamples = 2048
 nblocks = 10
