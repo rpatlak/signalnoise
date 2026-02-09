@@ -564,13 +564,17 @@ def estimate_aliased_tone_clean(fname_clean,
     }
 
 
+"""
+Below code to be run in a terminal from a seperate .py file to collect data
+"""
+
 #import ugradio
-fs = 3e6
-nsamples = 2048
-nblocks = 10
-sdr = ugradio.sdr.SDR(sample_rate=fs, fir_coeffs=np.array([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2047]))
-data = sdr.capture_data(nsamples, nblocks=nblocks)
-print("data shape:", data.shape)
-print("dtype:", data.dtype)
-print("fs (Hz):", fs)
-np.savez("1500khzNoise.npz", data=data, fs=fs)
+#fs = 3e6
+#nsamples = 2048
+#nblocks = 10
+#sdr = ugradio.sdr.SDR(sample_rate=fs, fir_coeffs=np.array([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2047]))
+#data = sdr.capture_data(nsamples, nblocks=nblocks)
+#print("data shape:", data.shape)
+#print("dtype:", data.dtype)
+#print("fs (Hz):", fs)
+#np.savez("1500khzNoise.npz", data=data, fs=fs)
